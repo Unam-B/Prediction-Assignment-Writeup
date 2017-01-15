@@ -1,7 +1,7 @@
 ---
 title: "Practical Machine Learning Project Write Up"
 author: "Unam Bakumeni"
-date: "27 June 2016"
+date: "15 January 2017"
 output: html_document
 ---
 
@@ -15,7 +15,7 @@ First, we need to load the caret package as well as the data. The data came from
 
 Below, both the training and testing sets are loaded.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(caret)
 
 # Load Training and test data
@@ -28,7 +28,7 @@ testing <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml
 
 To further prepare the data for modeling, we first remove all columns with mising values. After which we remove the first seven columns as they are related to unique user information and time.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 NonNAColumns <- colnames(training)[colSums(is.na(training)) == 0]
 training <- training[NonNAColumns]
@@ -42,7 +42,7 @@ training <- training[,-c(1:7)]
 
 Next, the data needs to be partitioned. Using the training set, we will create a new training and testing set (60-40 split). This is done so that we can test our model before we apply it to the main testing data.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 set.seed(3)
 inTrain <- createDataPartition(y=training$classe, p=0.6,list=F)
@@ -54,50 +54,43 @@ testing2 <- training[-inTrain,]
 
 ## 3) Model Building
 
-We are now ready to start building our model. We'll use a gradient boosted model algorithm to make our predictions. First, we need to tune our parameters for the model. We will use 10 fold repeated cross validation repeated 5 times. Also, for each fold and repeat, we'll build 100 trees with interaction depths of 1, 5 and 9. 
+We are now ready to start building our model. We'll use a random forest algorithm to make our predictions. First, we need to tune our parameters for the model. We will use 5 fold cross validation repeated 5 times. 
 
-
-```{r}
-
+```{r message=FALSE, warning=FALSE}
+set.seed(3)
 fitControl <- trainControl(
-        method = "repeatedcv",
-        number = 10,
+        method = "cv",
+        number = 5,
         repeats = 5,
         allowParallel = T, 
         verbose = F)
-
-gbmGrid <-  expand.grid(interaction.depth = c(1, 5, 9),
-                        n.trees = 100,
-                        shrinkage = 0.1,
-                        n.minobsinnode = 20)
 
 ```
 
 Below we actually build the model with the parameters set in the code above. We'll also use principal component analysis to aggregate some of the predictors that have a similar impact on the target variable.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 set.seed(3)
-gbmMod <- train(classe ~ ., 
+rfMod <- train(classe ~ ., 
                  data = training2,
-                 method = "gbm",
+                 method = "rf",
                  trControl = fitControl,
-                 preProcess = "pca",
-                tuneGrid = gbmGrid)
+                 preProcess = "pca")
 ```
 
 ## 4) Model Evaluation and Conclusion
 
-We will now apply the model on the new testing set and evaluate the results.
+We will now apply the model on the new testing set and evaluate the results. The model has an accuracy of 97.06% making the out of sample error +/- 2.94%.
 
-```{r}
-predgbmMod<-predict(gbmMod, newdata=testing2)
-confusionMatrix(predgbmMod, testing2$classe)
+```{r message=FALSE, warning=FALSE}
+predrfMod<-predict(rfMod, newdata=testing2)
+confusionMatrix(predrfMod, testing2$classe)
 ```
 
 Finally, we'll apply our model to the original testing set and return the results.
 
-```{r}
-predgbmMod2 <-predict(gbmMod, newdata=testing)
-print(predgbmMod2)
+```{r message=FALSE, warning=FALSE}
+predrfMod2 <-predict(rfMod, newdata=testing)
+print(predrfMod2)
 ```
